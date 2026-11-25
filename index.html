@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Big O: Racing to Infinity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: a clear lecture that proves things; calm, exact, confident.
+IDEA: a maths notebook on quadrille paper. Red pen = the function f we worry about, blue ink = the bound C·g, yellow highlighter = "from n0 onwards".
+PICTURE: live graphs drawn on the grid: functions racing, the witnesses C and n0, a sorting race.
+COLOUR and TYPE: white paper, faint blue grid, graphite ink, one red, one blue, one highlighter. STIX Two Text (the face of maths publishing) for titles and formulas; Atkinson Hyperlegible for body, built to be read from the back of the room.
+LAYOUT: one idea per slide, title top left, the figure takes the largest box; everything stacks on phones.
+*/
+:root{
+  --paper:#ffffff; --grid:#e6eff6; --grid2:#cddceb; --ink:#14171c; --muted:#525c6a; --graphite:#7b8593;
+  --blue:#1f45c9; --red:#cf3327; --hl:rgba(255,222,40,.55); --hl-solid:#ffde28; --hl-ink:#5a4a00;
+  --u:min(1vw,1.7778vh);
+  --fs-hero:max(38px,calc(var(--u)*5.3));
+  --fs-title:max(26px,calc(var(--u)*3.25));
+  --fs-math:max(20px,calc(var(--u)*2.45));
+  --fs-body:max(16px,calc(var(--u)*1.52));
+  --fs-small:max(13px,calc(var(--u)*1.12));
+  --pad-x:calc(var(--u)*5.2); --pad-y:calc(var(--u)*3.6);
+}
+:root[data-theme=dark]{
+  --paper:#0f141a; --grid:#17212b; --grid2:#24323f; --ink:#e8ecf0; --muted:#a3aebb; --graphite:#7f8b99;
+  --blue:#8ba5ff; --red:#ff7f70; --hl:rgba(255,222,40,.24); --hl-solid:#ffde28; --hl-ink:#ffe98a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:var(--fs-body)/1.5 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+.m,h1,h2,.formula{font-family:"STIX Two Text","Cambria Math",Cambria,"Times New Roman",serif}
+.m i,.formula i{font-style:italic}
+sub,sup{font-size:.62em;line-height:0}
+button,input{font:inherit;color:inherit}
+
+#deck{display:flex;height:100vh;height:100dvh;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+#deck::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow-y:auto;position:relative;
+  display:flex;flex-direction:column;gap:calc(var(--u)*2);padding:var(--pad-y) var(--pad-x) calc(var(--pad-y) + 52px);
+  background-color:var(--paper);
+  background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px),linear-gradient(to bottom,var(--grid) 1px,transparent 1px);
+  background-size:calc(var(--u)*2.5) calc(var(--u)*2.5)}
+.notes{display:none}
+h2{font-size:var(--fs-title);line-height:1.08;font-weight:600;margin:0;max-width:30ch;text-wrap:balance;letter-spacing:-.005em}
+h1{font-size:var(--fs-hero);line-height:1.02;font-weight:600;margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+.lede{color:var(--muted);max-width:62ch}
+.small{font-size:var(--fs-small);color:var(--muted)}
+.body{flex:1;min-height:0;display:grid;gap:calc(var(--u)*3);align-content:start}
+.two{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.two-r{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+.body.two,.body.two-r{grid-template-rows:1fr;align-content:stretch}
+.col{display:flex;flex-direction:column;gap:calc(var(--u)*1.6)}
+.fig{position:relative;min-height:260px;flex:1}
+.fig>svg,.fig>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tall{min-height:max(220px,calc(var(--u)*20))}
+
+/* inks */
+.t-red{color:var(--red)} .t-blue{color:var(--blue)} .t-muted{color:var(--muted)}
+.hl{background:linear-gradient(transparent 52%,var(--hl) 52%,var(--hl) 92%,transparent 92%);padding:0 .1em}
+.u-blue{box-shadow:inset 0 -.13em var(--blue)} .u-red{box-shadow:inset 0 -.13em var(--red)} .mark{background:var(--hl);padding:0 .12em;border-radius:2px}
+svg text{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;fill:var(--ink)}
+svg .serif{font-family:"STIX Two Text",Cambria,serif;font-style:italic}
+.ln{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.s-red{stroke:var(--red)} .s-blue{stroke:var(--blue)} .s-graph{stroke:var(--graphite)} .s-ink{stroke:var(--ink)}
+.f-red{fill:var(--red)} .f-blue{fill:var(--blue)} .f-graph{fill:var(--graphite)} .f-muted{fill:var(--muted)}
+.axis{stroke:var(--ink);stroke-width:1.5;fill:none} .gl{stroke:var(--grid2);stroke-width:1}
+.hlr{fill:var(--hl)} .bad{fill:var(--red);fill-opacity:.22}
+.draw path.anim{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.6s cubic-bezier(.3,.1,.2,1) forwards}
+.draw text.anim{opacity:0;animation:fade .5s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}} @keyframes fade{to{opacity:1}}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.seg{display:inline-flex;align-self:flex-start;flex-wrap:wrap;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden;background:var(--paper)}
+.seg button{min-height:44px;padding:0 max(12px,calc(var(--u)*1.1));border:0;background:none;cursor:pointer;font-size:var(--fs-small);font-weight:700}
+.seg button+button{border-left:1.5px solid var(--ink)}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.btn{min-height:44px;padding:0 18px;border:1.5px solid var(--ink);border-radius:8px;background:var(--paper);cursor:pointer;font-size:var(--fs-small);font-weight:700}
+.btn.primary{background:var(--ink);color:var(--paper)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.range{display:grid;grid-template-columns:auto minmax(120px,1fr) 4.2em;gap:12px;align-items:center;font-size:var(--fs-small)}
+.range output{font-family:"STIX Two Text",serif;font-size:var(--fs-body);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;height:44px;accent-color:var(--ink);background:none;cursor:pointer}
+.verdict{display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-small);min-height:3em}
+.dot{flex:none;width:.8em;height:.8em;border-radius:50%;margin-top:.35em;background:var(--blue)}
+.verdict.no .dot{background:var(--red)}
+
+/* maths */
+.formula{font-size:max(22px,calc(var(--u)*3.1));line-height:1.6;text-wrap:balance}
+.formula span{white-space:nowrap}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.2;margin:0 .12em}
+.frac>span:first-child{border-bottom:.06em solid currentColor;padding:0 .25em .06em}
+.frac>span:last-child{padding:.06em .25em 0}
+.lim{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin-right:.15em}
+.lim small{font-size:.55em;font-style:italic}
+.proof{font-family:"STIX Two Text",serif;font-size:var(--fs-math);line-height:1.55;display:flex;flex-direction:column;gap:.15em}
+.proof .why{font-family:"Atkinson Hyperlegible",sans-serif;font-size:var(--fs-small);color:var(--muted);margin-left:.4em}
+.qed{float:right}
+.parts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:calc(var(--u)*1.2) calc(var(--u)*2.4);margin:0;align-items:baseline}
+.parts dt{font-family:"STIX Two Text",serif;font-size:var(--fs-math);white-space:nowrap}
+.parts dd{margin:0}
+.box{border:1.5px solid var(--ink);border-radius:10px;padding:calc(var(--u)*1.6) calc(var(--u)*2);background:var(--paper)}
+.box.blue{border-color:var(--blue)} .box.red{border-color:var(--red)}
+.box h3{margin:0 0 .35em;font-size:var(--fs-body);font-weight:700}
+
+/* tables and bar rows */
+table{border-collapse:collapse;width:100%;font-size:var(--fs-small);background:var(--paper)}
+th,td{padding:.42em .6em;text-align:left;border-bottom:1px solid var(--grid2);vertical-align:middle}
+th{font-weight:700;border-bottom:2px solid var(--ink)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.m-cell{font-family:"STIX Two Text",serif;font-size:1.15em;white-space:nowrap}
+tr.is-red td{color:var(--red)} tr.is-blue td{color:var(--blue)}
+tr.is-red .m-cell,tr.is-blue .m-cell{font-weight:600}
+.bar{height:.9em;border-radius:3px;background:currentColor;min-width:3px}
+.bar.full{background:repeating-linear-gradient(135deg,currentColor 0 6px,transparent 6px 10px);border:1.5px solid currentColor}
+.ruler{display:flex;justify-content:space-between;font-size:max(11px,calc(var(--u)*.9));color:var(--muted);font-weight:400;position:relative}
+.rows{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;gap:calc(var(--u)*1.1) 16px;align-items:center}
+.row{display:contents}
+.row .lbl{font-family:"STIX Two Text",serif;font-size:calc(var(--fs-body)*1.2);white-space:nowrap}
+.scroll{overflow-x:auto}
+.row .val{text-align:right;font-variant-numeric:tabular-nums;font-size:var(--fs-small);white-space:nowrap}
+.track{height:max(14px,calc(var(--u)*1.5));background:var(--grid);border-radius:4px;overflow:hidden}
+.track>div{height:100%;background:var(--ink);transition:width .45s ease}
+.track>div.red{background:var(--red)} .track>div.blue{background:var(--blue)}
+
+/* race */
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*1.6) calc(var(--u)*2.4);flex:1;min-height:0}
+.lane{display:flex;flex-direction:column;gap:6px;min-height:120px}
+.lane header{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-small);font-weight:700}
+.lane header output{font-weight:400;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lane .fig{min-height:90px;border-bottom:1.5px solid var(--ink)}
+
+/* title slide */
+.title-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:calc(var(--u)*4);flex:1;align-items:stretch}
+.title-grid .col{justify-content:center}
+.kicker{font-family:"STIX Two Text",serif;font-style:italic;font-size:var(--fs-math);color:var(--muted)}
+.keys{font-size:var(--fs-small);color:var(--muted)}
+kbd{font:700 .9em "Atkinson Hyperlegible",sans-serif;border:1.5px solid var(--graphite);border-bottom-width:3px;border-radius:5px;padding:0 .4em}
+
+.takeaways{display:grid;gap:calc(var(--u)*2.2);max-width:58em}
+.takeaways p{font-size:max(18px,calc(var(--u)*2));line-height:1.35}
+.refs{display:grid;gap:.8em;max-width:62em;padding-left:1.2em;margin:0}
+.refs a{color:var(--blue)}
+.backup-tag{font-size:var(--fs-small);color:var(--muted);font-style:italic;font-family:"STIX Two Text",serif}
+
+/* chrome */
+#nav{position:fixed;right:max(10px,calc(var(--u)*1.2));bottom:8px;display:flex;align-items:center;gap:4px;z-index:5;background:var(--paper);border:1.5px solid var(--grid2);border-radius:10px;padding:2px}
+#nav button{width:44px;height:40px;border:0;background:none;cursor:pointer;border-radius:8px;font-size:15px;font-weight:700;color:var(--muted)}
+#nav button:hover{color:var(--ink);background:var(--grid)}
+#count{font-size:14px;color:var(--muted);padding:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#progress{position:fixed;left:0;bottom:0;height:4px;background:var(--ink);z-index:5;transition:width .3s ease}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:46vh;overflow:auto;z-index:6;background:var(--paper);border-top:2px solid var(--ink);
+  padding:14px max(18px,calc(var(--u)*4)) 60px;font-size:max(16px,calc(var(--u)*1.25));line-height:1.55;box-shadow:0 -8px 30px rgba(0,0,0,.12)}
+#notes[hidden]{display:none}
+#notes .meta{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:14px;color:var(--muted);margin-bottom:8px}
+#notes .meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+#notes .late{color:var(--red)}
+#notes p+p{margin-top:.6em}
+#notes .act{color:var(--blue);font-weight:700}
+
+@media (max-width:820px),(orientation:portrait) and (max-width:1000px){
+  :root{--pad-x:18px;--pad-y:22px}
+  .two,.two-r,.title-grid{grid-template-columns:minmax(0,1fr)}
+  .lanes{grid-template-columns:minmax(0,1fr)}
+  .parts{grid-template-columns:minmax(0,1fr)} .parts dd{margin-bottom:.6em}
+  .fig{min-height:260px}
+  .title-grid .fig{min-height:240px}
+}
+@media (max-width:600px){
+  table{font-size:13px}
+  .stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--grid2)}
+  .stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}
+  .stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--muted)}
+  .stack td:empty{display:none}
+  .row .val{white-space:normal}
+}
+@media (prefers-reduced-motion:reduce){.draw path.anim{animation:none;stroke-dashoffset:0}.draw text.anim{animation:none;opacity:1}.track>div,#progress{transition:none}}
+@media print{
+  body{overflow:visible} #deck{display:block;height:auto;overflow:visible} #nav,#progress,#notes{display:none}
+  .slide{height:auto;min-height:100vh;break-after:page;overflow:visible}
+}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<main id="deck" aria-label="Presentation slides">
+
+<!-- 1 TITLE -->
+<section class="slide" id="title" data-t="20" aria-label="Title">
+  <div class="title-grid">
+    <div class="col">
+      <p class="kicker">Discrete Mathematics, final project 9</p>
+      <h1>Big O: comparing functions on their way to infinity</h1>
+      <p class="lede">The formal definition, why it describes asymptotic behaviour, why it is the language of algorithm efficiency, and what it says about sorting.</p>
+      <!-- EDIT: put your group's names inside the next paragraph, e.g. Ana, Luis, Fabián, Marta -->
+      <p class="small" id="team">BCSAI, IE University</p>
+      <p class="keys">Move with <kbd>←</kbd> <kbd>→</kbd> or a clicker. <kbd>F</kbd> full screen, <kbd>N</kbd> speaker notes.</p>
+    </div>
+    <div class="fig"><svg id="fig-title" class="draw" role="img" aria-label="Five growth curves: log n, n, n log n, n squared and 2 to the n, fanning out as n grows"></svg></div>
+  </div>
+  <aside class="notes">
+    <p>Good morning. Our project is number 9: Big O notation.</p>
+    <p>The brief asks four things, and that's our plan: the formal definition of Big O, why it describes the asymptotic behaviour of functions, why it's the right tool to measure algorithms, and the time complexity of sorting algorithms.</p>
+    <p class="act">[Point at the curves] These are the functions we'll compare. They all go to infinity, but at very different speeds.</p>
+  </aside>
+</section>
+
+<!-- 2 HOOK -->
+<section class="slide" id="hook" data-t="45" aria-label="Why growth matters">
+  <h2>Sorting a million numbers: 0.02 seconds or 17 minutes</h2>
+  <div class="body">
+    <div class="col">
+      <p class="lede">Same computer, doing 10<sup>9</sup> basic steps per second. The only thing that changes is how the number of steps grows with the input size <i class="m">n</i>.</p>
+      <div class="controls"><span class="small">Input size <i class="m">n</i></span>
+        <div class="seg" id="hook-n" role="group" aria-label="Input size"></div>
+      </div>
+      <div class="scroll"><table id="hook-table" aria-live="polite">
+        <thead><tr><th>Steps</th><th>Typical algorithm</th><th class="num">Steps for this <i class="m">n</i></th><th class="num">Time</th><th style="width:30%"><div class="ruler"><span>1 ns</span><span>1 s</span><span>1 year</span><span>age of the universe</span></div></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Why does this matter? Imagine sorting one million numbers on a computer that does a billion basic steps per second.</p>
+    <p class="act">[Point at the red row]</p>
+    <p>A simple algorithm like bubble sort needs about n² steps: 10¹², so about 17 minutes.</p>
+    <p class="act">[Point at the blue row]</p>
+    <p>Merge sort needs about n log n steps, around 20 million: two hundredths of a second.</p>
+    <p class="act">[Click "1 billion"]</p>
+    <p>With a billion items it's 30 seconds against 32 years. Same computer, same data. The difference is how the number of steps grows with n. So our question is: how do we compare two functions that both grow without limit?</p>
+  </aside>
+</section>
+
+<!-- 3 RACE -->
+<section class="slide" id="race" data-t="45" aria-label="Two functions racing">
+  <h2>Both go to infinity. Who is bigger depends on how far you look.</h2>
+  <div class="body two">
+    <div class="fig tall"><svg id="fig-race" role="img" aria-label="Graph of 100n and n squared; they cross at n equals 100"></svg></div>
+    <div class="col">
+      <label class="range"><span>Look up to <i class="m">n</i> =</span><input id="zoom" type="range" min="0" max="100" step="1" value="24"><output id="zoom-out"></output></label>
+      <p id="race-read" aria-live="polite"></p>
+      <p>Comparing at one value of <i class="m">n</i> is misleading. <span class="t-blue">100<i class="m">n</i></span> wins early, but from <i class="m">n</i> = 100 on, <span class="t-red"><i class="m">n</i>²</span> is ahead forever.</p>
+      <p class="lede">We need a definition about the long run: a statement that holds for <span class="hl">every sufficiently large <i class="m">n</i></span>.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Here are two functions: 100n in blue and n² in red.</p>
+    <p class="act">[Slider on the left, around n = 60]</p>
+    <p>If we only look at small n, 100n is bigger. At n = 50 it's 5,000 against 2,500.</p>
+    <p class="act">[Drag the slider to the right]</p>
+    <p>Zoom out: at n = 100 they're equal, and after that n² leaves 100n behind forever. Both go to infinity, but n² goes faster.</p>
+    <p>So comparing at a single n is misleading. We need a definition about the long run, about every sufficiently large n. That's exactly what Big O does.</p>
+  </aside>
+</section>
+
+<!-- 4 DEFINITION -->
+<section class="slide" id="definition" data-t="55" aria-label="Formal definition">
+  <h2>The formal definition: eventually below a constant multiple</h2>
+  <div class="body">
+    <p class="formula" aria-label="f of n is big O of g of n if and only if there exist C greater than 0 and n zero such that for all n greater than or equal to n zero, the absolute value of f of n is at most C times the absolute value of g of n">
+      <span><i>f</i>(<i>n</i>) = <i>O</i>(<i>g</i>(<i>n</i>))</span> &nbsp;⟺&nbsp;
+      <span class="u-blue">∃<i>C</i> &gt; 0</span> &nbsp;<span class="mark">∃<i>n</i><sub>0</sub></span> &nbsp;<span class="mark">∀<i>n</i> ≥ <i>n</i><sub>0</sub></span> :
+      <span class="u-red">|<i>f</i>(<i>n</i>)| ≤ <i>C</i>·|<i>g</i>(<i>n</i>)|</span>
+    </p>
+    <div class="two" style="display:grid;gap:calc(var(--u)*3)">
+      <dl class="parts">
+        <dt><span class="u-blue">∃<i>C</i> &gt; 0</span></dt><dd>There is some fixed multiple of <i class="m">g</i>. <b>Constant factors don't matter.</b></dd>
+        <dt><span class="mark">∃<i>n</i><sub>0</sub></span></dt><dd>There is some starting point. <b>Small inputs don't matter.</b></dd>
+        <dt><span class="mark">∀<i>n</i> ≥ <i>n</i><sub>0</sub></span></dt><dd>From that point on, with no exceptions.</dd>
+        <dt><span class="u-red">|<i>f</i>| ≤ <i>C</i>·|<i>g</i>|</span></dt><dd><i class="m">f</i> never exceeds that multiple of <i class="m">g</i>.</dd>
+      </dl>
+      <div class="col">
+        <div class="box"><h3>In words</h3><p>From some point on, <i class="m">f</i> grows no faster than <i class="m">g</i>, up to a constant factor.</p></div>
+        <p>The pair (<i class="m">C</i>, <i class="m">n</i><sub>0</sub>) is called the <b>witnesses</b>. To prove a Big O claim, you exhibit them.</p>
+        <p class="small">Big O is an <b>upper bound</b>: <i class="m">n</i> = <i class="m">O</i>(<i class="m">n</i>²) is true, just not tight. The notation goes back to Bachmann (1894); Knuth brought it into computer science in 1976.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>This is the formal definition. f of n is Big O of g of n if there exist a positive constant C and a threshold n₀ such that, for every n ≥ n₀, |f(n)| is at most C times |g(n)|.</p>
+    <p>Read the quantifiers left to right, like in our predicate-logic unit: there exists C, there exists n₀, for all n ≥ n₀.</p>
+    <p>Each piece has a job. C lets us ignore constant factors. n₀ lets us ignore small inputs: the inequality only has to hold eventually. And "for all n" means no exceptions after that point.</p>
+    <p>C and n₀ are called witnesses: to prove a Big O claim, you show them. And Big O is an upper bound: "n is O(n²)" is true, just not tight.</p>
+  </aside>
+</section>
+
+<!-- 5 EXPLORER + PROOF -->
+<section class="slide" id="witnesses" data-t="50" aria-label="Finding the witnesses">
+  <h2>Proving 3<i>n</i>² + 5<i>n</i> + 2 = <i>O</i>(<i>n</i>²): find the witnesses</h2>
+  <div class="body two">
+    <div class="col">
+      <div class="fig tall"><svg id="fig-wit" role="img" aria-label="Graph of f of n equals 3 n squared plus 5 n plus 2 in red and C times n squared in blue, with the region n at least n zero highlighted"></svg></div>
+      <label class="range"><span><i class="m">C</i> =</span><input id="cC" type="range" min="1" max="12" step="0.5" value="10"><output id="cC-out"></output></label>
+      <label class="range"><span><i class="m">n</i><sub>0</sub> =</span><input id="cN" type="range" min="0" max="10" step="1" value="1"><output id="cN-out"></output></label>
+    </div>
+    <div class="col">
+      <p><span class="t-red">Red: <i class="m">f</i>(<i class="m">n</i>) = 3<i class="m">n</i>² + 5<i class="m">n</i> + 2.</span> <span class="t-blue">Blue: <i class="m">C</i>·<i class="m">n</i>².</span> <span class="mark">Highlighted: <i class="m">n</i> ≥ <i class="m">n</i><sub>0</sub>.</span></p>
+      <div class="proof">
+        <div>For <i>n</i> ≥ 1: <span class="why">(so n ≤ n² and 1 ≤ n²)</span></div>
+        <div>5<i>n</i> ≤ 5<i>n</i>² &nbsp;and&nbsp; 2 ≤ 2<i>n</i>²</div>
+        <div>3<i>n</i>² + 5<i>n</i> + 2 ≤ 3<i>n</i>² + 5<i>n</i>² + 2<i>n</i>² = 10<i>n</i>²</div>
+        <div>Witnesses: <span class="u-blue"><i>C</i> = 10</span>, <span class="mark"><i>n</i><sub>0</sub> = 1</span> <span class="qed">∎</span></div>
+      </div>
+      <div class="verdict" id="wit-verdict" aria-live="polite"><span class="dot"></span><span></span></div>
+      <p class="small">Try <i class="m">C</i> = 4: it still works, but only from <i class="m">n</i><sub>0</sub> = 6. With <i class="m">C</i> = 3 it never works. Witnesses aren't unique; one valid pair is enough.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Let's use the definition. Claim: 3n² + 5n + 2 is O(n²). Red is f, blue is C·n², and the yellow highlight is the region n ≥ n₀.</p>
+    <p>The proof: for n ≥ 1, 5n ≤ 5n² and 2 ≤ 2n². So f(n) ≤ 3n² + 5n² + 2n² = 10n². C = 10 and n₀ = 1 are witnesses.</p>
+    <p class="act">[Move C to 4]</p>
+    <p>A smaller C still works, but only from a later point: here from n = 6.</p>
+    <p class="act">[Move C to 3]</p>
+    <p>With C = 3 it never works, because f is always 5n + 2 above 3n². Witnesses aren't unique: we just need one valid pair.</p>
+  </aside>
+</section>
+
+<!-- 6 NEGATION -->
+<section class="slide" id="negation" data-t="40" aria-label="Proving a function is not big O">
+  <h2>Proving <i>n</i>² is not <i>O</i>(<i>n</i>): negate the quantifiers</h2>
+  <div class="body two">
+    <div class="col">
+      <p class="formula" style="font-size:calc(var(--fs-math)*1.15)">¬( ∃<i>C</i> ∃<i>n</i><sub>0</sub> ∀<i>n</i> ≥ <i>n</i><sub>0</sub> : <i>n</i>² ≤ <i>C</i>·<i>n</i> )</p>
+      <p class="formula" style="font-size:calc(var(--fs-math)*1.15)">≡ &nbsp;∀<i>C</i> ∀<i>n</i><sub>0</sub> ∃<i>n</i> ≥ <i>n</i><sub>0</sub> : <i>n</i>² &gt; <i>C</i>·<i>n</i></p>
+      <p class="lede">Negation turns every ∃ into ∀ and every ∀ into ∃, and flips ≤ into &gt;. Same rule as in our predicate-logic unit.</p>
+    </div>
+    <div class="box">
+      <h3>Proof</h3>
+      <div class="proof">
+        <div>Take any <i>C</i> &gt; 0 and any <i>n</i><sub>0</sub>.</div>
+        <div>Choose <i>n</i> = max(<i>n</i><sub>0</sub>, ⌊<i>C</i>⌋ + 1).</div>
+        <div>Then <i>n</i> ≥ <i>n</i><sub>0</sub> and <i>n</i> &gt; <i>C</i>,</div>
+        <div>so <i>n</i>² = <i>n</i>·<i>n</i> &gt; <i>C</i>·<i>n</i>.</div>
+        <div>No choice of witnesses survives. <span class="qed">∎</span></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>How do we prove that something is NOT Big O? We negate the definition.</p>
+    <p>Negating "there exists, there exists, for all" gives "for all, for all, there exists", and ≤ becomes >. So to show n² is not O(n), we show: for every C and every n₀, there's some n ≥ n₀ that breaks the inequality.</p>
+    <p>Take any C and n₀. Choose n bigger than both. Then n > C, so n² = n·n > C·n. The inequality fails, and since C and n₀ were arbitrary, no witnesses exist.</p>
+  </aside>
+</section>
+
+<!-- 7 LIMIT TEST -->
+<section class="slide" id="limits" data-t="50" aria-label="The limit test">
+  <h2>The calculus shortcut: watch the ratio <i>f</i>/<i>g</i> as <i>n</i> → ∞</h2>
+  <div class="body two-r">
+    <div class="col">
+      <p class="formula" style="font-size:var(--fs-math)"><span class="lim">lim<small>n→∞</small></span> <span class="frac"><span><i>f</i>(<i>n</i>)</span><span><i>g</i>(<i>n</i>)</span></span> = <i>L</i></p>
+      <table>
+        <thead><tr><th>If <i class="m">L</i> is…</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="m-cell">0</td><td><i class="m">f</i> grows strictly slower: <i class="m">f</i> = <i class="m">O</i>(<i class="m">g</i>)</td></tr>
+          <tr><td class="m-cell">0 &lt; <i>L</i> &lt; ∞</td><td>same growth rate: <i class="m">f</i> = Θ(<i class="m">g</i>)</td></tr>
+          <tr><td class="m-cell">∞</td><td><i class="m">f</i> grows faster: <i class="m">f</i> ≠ <i class="m">O</i>(<i class="m">g</i>)</td></tr>
+        </tbody>
+      </table>
+      <div class="box blue"><h3>Why the limit proves Big O</h3><p>If <i class="m">f</i>/<i class="m">g</i> → <i class="m">L</i> &lt; ∞, then eventually <i class="m">f</i>/<i class="m">g</i> &lt; <i class="m">L</i> + 1. So <i class="m">C</i> = <i class="m">L</i> + 1 is a witness.</p></div>
+    </div>
+    <div class="col">
+      <div class="seg" id="lim-pick" role="group" aria-label="Pair of functions"></div>
+      <div class="fig tall"><svg id="fig-lim" role="img" aria-label="Graph of the ratio f over g as n grows"></svg></div>
+      <p id="lim-text" aria-live="polite"></p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>The project requires calculus, and this is where it comes in. Instead of hunting for witnesses, we look at the ratio f over g as n goes to infinity.</p>
+    <p>If the limit is a finite number L, then eventually f/g is less than L + 1, so C = L + 1 is a witness and f is O(g). If the limit is 0, f grows strictly slower. If it's infinity, f is not O(g).</p>
+    <p class="act">[Click through the four buttons]</p>
+    <p>Our polynomial over n² tends to 3: same growth. Log n over n: by L'Hôpital, (1/n)/1 tends to 0, so log n grows slower. n² over n is just n, which goes to infinity. And n³ over 2ⁿ tends to 0: any polynomial loses to an exponential.</p>
+    <p>This is the relation between two functions going to infinity: their ratio tells us who wins.</p>
+  </aside>
+</section>
+
+<!-- 8 ASYMPTOTIC -->
+<section class="slide" id="asymptotic" data-t="35" aria-label="Why it is asymptotic">
+  <h2>As <i>n</i> grows, only the leading term matters</h2>
+  <div class="body two">
+    <div class="col">
+      <p class="small">Share of 3<i class="m">n</i>² + 5<i class="m">n</i> + 2 that comes from the <span class="t-red">3<i class="m">n</i>²</span> term</p>
+      <div class="rows" id="share-rows"></div>
+    </div>
+    <div class="col">
+      <p><b>Asymptotic</b> means: what happens as <i class="m">n</i> → ∞. Big O deliberately forgets three things:</p>
+      <dl class="parts">
+        <dt>3<i>n</i>² → <i>n</i>²</dt><dd>constant factors, absorbed by <i class="m">C</i></dd>
+        <dt>+ 5<i>n</i> + 2</dt><dd>lower-order terms, they vanish in the ratio</dd>
+        <dt><i>n</i> &lt; <i>n</i><sub>0</sub></dt><dd>small inputs, skipped by <i class="m">n</i><sub>0</sub></dd>
+      </dl>
+      <p class="lede">What is left is the shape of growth. That's why we just write <i class="m">O</i>(<i class="m">n</i>²). The base of a logarithm doesn't matter either: log<sub>2</sub><i class="m">n</i> and log<sub>10</sub><i class="m">n</i> differ by a constant factor.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Why do we call this asymptotic behaviour? Asymptotic means what happens as n tends to infinity.</p>
+    <p>Look at how much of 3n² + 5n + 2 comes from the 3n² term: 30% at n = 1, 98% at n = 100, 99.9998% at a million. The lower-order terms become irrelevant.</p>
+    <p>Big O deliberately forgets three things: constant factors, lower-order terms and small inputs. What's left is the shape of growth. That's why we just write O(n²).</p>
+  </aside>
+</section>
+
+<!-- 9 WHY ALGORITHMS -->
+<section class="slide" id="algorithms" data-t="50" aria-label="Why big O fits algorithms">
+  <h2>Why it fits algorithms: hardware changes the constant, not the growth</h2>
+  <div class="body two">
+    <div class="col">
+      <p class="formula" style="font-size:var(--fs-math)">time = <span class="t-red">steps <i>T</i>(<i>n</i>)</span> × <span class="t-blue">time per step</span></p>
+      <dl class="parts" style="grid-template-columns:max-content minmax(0,1fr)">
+        <dt style="font-size:var(--fs-body);font-family:inherit"><b>Machine-independent</b></dt><dd>Time per step depends on the CPU, language and compiler. It's a constant, so <i class="m">C</i> absorbs it.</dd>
+        <dt style="font-size:var(--fs-body);font-family:inherit"><b>About big inputs</b></dt><dd>Small inputs are fast anyway. The hard case is large <i class="m">n</i>, exactly the limit <i class="m">n</i> → ∞.</dd>
+        <dt style="font-size:var(--fs-body);font-family:inherit"><b>It composes</b></dt><dd>Steps in sequence add, keep the biggest: <i class="m">O</i>(<i class="m">n</i>) + <i class="m">O</i>(<i class="m">n</i>²) = <i class="m">O</i>(<i class="m">n</i>²). Nested loops multiply: <i class="m">n</i> · <i class="m">n</i> = <i class="m">O</i>(<i class="m">n</i>²).</dd>
+      </dl>
+    </div>
+    <div class="col">
+      <div class="controls"><span class="small">Buy a computer that is</span><div class="seg" id="speed-pick" role="group" aria-label="Speed-up"></div></div>
+      <p class="small">How much bigger an input it handles in the same time:</p>
+      <div class="rows" id="speed-rows"></div>
+      <p class="lede">A faster machine multiplies speed by a constant. It can't rescue a bad growth rate.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Why is Big O the right tool for algorithms? Running time is the number of steps times the time per step.</p>
+    <p>First: the time per step depends on the processor, the language, the compiler. But it's a constant, and Big O absorbs constants into C. So the classification doesn't depend on the machine.</p>
+    <p>Second: the hard case is large inputs, which is exactly the limit n → ∞. Third: it composes. Steps in sequence add, so we keep the biggest term; nested loops multiply.</p>
+    <p class="act">[Click ×100]</p>
+    <p>A computer 100 times faster lets a linear algorithm handle 100 times more data in the same time, a quadratic one only 10 times more, and an exponential one only about 7 more items. Hardware changes the constant, never the growth rate.</p>
+  </aside>
+</section>
+
+<!-- 10 COUNTING -->
+<section class="slide" id="counting" data-t="60" aria-label="Analysing sorting algorithms">
+  <h2>Counting comparisons: why some sorts are <i>n</i>² and others <i>n</i> log <i>n</i></h2>
+  <div class="body two">
+    <div class="col">
+      <h3 style="margin:0;font-size:var(--fs-body)" class="t-red">Selection sort (bubble sort is similar)</h3>
+      <p class="small">Find the smallest of <i class="m">n</i>, then of the remaining <i class="m">n</i> − 1, and so on. Each square below is one comparison (<i class="m">n</i> = 8).</p>
+      <div class="fig" style="min-height:max(170px,calc(var(--u)*17))"><svg id="fig-stairs" role="img" aria-label="Triangle of 28 comparisons inside an 8 by 8 square"></svg></div>
+      <p class="proof" style="font-size:var(--fs-body)"><span>(<i>n</i>−1) + (<i>n</i>−2) + … + 1 = <span class="frac"><span><i>n</i>(<i>n</i>−1)</span><span>2</span></span> = ½<i>n</i>² − ½<i>n</i> = <b class="t-red">Θ(<i>n</i>²)</b></span></p>
+    </div>
+    <div class="col">
+      <h3 style="margin:0;font-size:var(--fs-body)" class="t-blue">Merge sort</h3>
+      <p class="small">Halve until size 1 (8 → 4 → 2 → 1 is log<sub>2</sub>8 = 3 halvings), then merge back. Merging a whole level costs at most <i class="m">n</i> comparisons.</p>
+      <div class="fig" style="min-height:max(170px,calc(var(--u)*17))"><svg id="fig-tree" role="img" aria-label="Merge sort recursion tree for 8 elements with 3 levels"></svg></div>
+      <p class="proof" style="font-size:var(--fs-body)"><span><i>T</i>(<i>n</i>) = 2<i>T</i>(<i>n</i>/2) + <i>n</i> &nbsp;⇒&nbsp; <i>n</i> per level × log<sub>2</sub><i>n</i> levels = <b class="t-blue">Θ(<i>n</i> log <i>n</i>)</b></span></p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Now let's analyse sorting. We count comparisons, because comparing two elements is the basic step.</p>
+    <p>Selection sort scans the whole list to find the smallest element, then scans the remaining n − 1, and so on. That's (n−1) + (n−2) + … + 1 comparisons, which equals n(n−1)/2: this triangle, about half of the n-by-n square. Half a square is still quadratic: ½n² − ½n is Θ(n²). Bubble sort and insertion sort have the same worst case.</p>
+    <p>Merge sort is different. It splits the list in half, again and again, until pieces have size 1: that takes log₂ n levels. Then it merges, and merging one whole level costs at most n comparisons. n per level times log₂ n levels: n log n. As a recurrence: T(n) = 2T(n/2) + n.</p>
+  </aside>
+</section>
+
+<!-- 11 SORTING RACE -->
+<section class="slide" id="sort-race" data-t="40" aria-label="Sorting race demo">
+  <h2>Same input, one comparison per tick: watch the counters</h2>
+  <div class="controls">
+    <div class="seg" id="race-n" role="group" aria-label="Number of items"></div>
+    <div class="seg" id="race-input" role="group" aria-label="Input order"></div>
+    <button class="btn primary" id="race-go">Start race</button>
+    <span class="small" id="race-theory"></span>
+  </div>
+  <div class="lanes" id="lanes"></div>
+  <aside class="notes">
+    <p>Let's watch it. Four algorithms, same input, and each one gets one comparison per tick.</p>
+    <p class="act">[Random, 128, Start]</p>
+    <p>Merge sort and quicksort finish almost immediately; bubble sort takes forever. Look at the comparison counters.</p>
+    <p class="act">[Click "Sorted", Start again]</p>
+    <p>Now something interesting. On already-sorted data, insertion sort and bubble sort finish instantly: their best case is O(n). But this quicksort, which picks the last element as pivot, hits its worst case, O(n²). That's why we always say whether we mean the best, average or worst case.</p>
+  </aside>
+</section>
+
+<!-- 12 RESULTS -->
+<section class="slide" id="results" data-t="40" aria-label="Sorting results and lower bound">
+  <h2>The quadratic sorts versus the <i>n</i> log <i>n</i> sorts</h2>
+  <div class="body two">
+    <table class="stack" style="font-size:var(--fs-body)">
+      <thead><tr><th>Algorithm</th><th>Best</th><th>Average</th><th>Worst</th><th>Extra memory</th></tr></thead>
+      <tbody>
+        <tr class="is-red"><td style="white-space:nowrap">Bubble sort</td><td class="m-cell"><i>n</i></td><td class="m-cell"><i>n</i>²</td><td class="m-cell"><i>n</i>²</td><td class="m-cell">1</td></tr>
+        <tr class="is-red"><td style="white-space:nowrap">Insertion sort</td><td class="m-cell"><i>n</i></td><td class="m-cell"><i>n</i>²</td><td class="m-cell"><i>n</i>²</td><td class="m-cell">1</td></tr>
+        <tr class="is-red"><td style="white-space:nowrap">Selection sort</td><td class="m-cell"><i>n</i>²</td><td class="m-cell"><i>n</i>²</td><td class="m-cell"><i>n</i>²</td><td class="m-cell">1</td></tr>
+        <tr><td>Quicksort</td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell t-red"><i>n</i>²</td><td class="m-cell">log <i>n</i></td></tr>
+        <tr class="is-blue"><td style="white-space:nowrap">Merge sort</td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i></td></tr>
+        <tr class="is-blue"><td>Heapsort</td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell"><i>n</i> log <i>n</i></td><td class="m-cell">1</td></tr>
+      </tbody>
+    </table>
+    <div class="col">
+      <div class="box blue">
+        <h3>The floor no comparison sort can break</h3>
+        <p>A sort that only compares elements must tell apart all <i class="m">n</i>! possible orders. Each comparison has two outcomes, so it needs at least log<sub>2</sub>(<i class="m">n</i>!) comparisons, and log<sub>2</sub>(<i class="m">n</i>!) grows like <span style="white-space:nowrap"><i class="m">n</i> log<sub>2</sub> <i class="m">n</i></span>.</p>
+        <p class="formula" style="font-size:var(--fs-math);margin-top:.4em">worst case = Ω(<i>n</i> log <i>n</i>)</p>
+      </div>
+      <p>So merge sort and heapsort are <b>asymptotically optimal</b>. Quicksort is still popular: with a random pivot its expected time is <i class="m">n</i> log <i class="m">n</i> and its constants are small.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>To summarise: bubble, insertion and selection sort are quadratic in the average and worst case. Merge sort and heapsort are n log n always. Quicksort is n log n on average but n² in the worst case.</p>
+    <p>And here's the deeper result: no algorithm that sorts only by comparing elements can beat n log n in the worst case. It has to tell apart all n! possible orders; each comparison has two outcomes, so it needs at least log₂(n!) comparisons, and log₂(n!) grows like n log n.</p>
+    <p>So merge sort and heapsort are asymptotically optimal.</p>
+  </aside>
+</section>
+
+<!-- 13 CONCLUSION -->
+<section class="slide" id="conclusion" data-t="20" aria-label="Conclusion">
+  <h2>What to remember</h2>
+  <div class="body">
+    <div class="takeaways">
+      <p><b>Definition.</b> <i class="m">f</i> = <i class="m">O</i>(<i class="m">g</i>) means <span class="m">∃<i>C</i> ∃<i>n</i><sub>0</sub> ∀<i>n</i> ≥ <i>n</i><sub>0</sub> : |<i>f</i>(<i>n</i>)| ≤ <i>C</i>·|<i>g</i>(<i>n</i>)|</span>: below a constant multiple, eventually.</p>
+      <p><b>Asymptotic.</b> It keeps only the shape of growth as <i class="m">n</i> → ∞, and the limit of <i class="m">f</i>/<i class="m">g</i> tells us who wins.</p>
+      <p><b>Algorithms.</b> It ignores exactly what depends on the machine. For sorting: <span class="t-red"><i class="m">n</i>²</span> for the simple sorts, <span class="t-blue"><i class="m">n</i> log <i class="m">n</i></span> for merge sort and heapsort, and no comparison sort can do better.</p>
+    </div>
+    <p class="kicker" style="margin-top:calc(var(--u)*2)">Thank you. Questions?</p>
+  </div>
+  <aside class="notes">
+    <p>To conclude. Big O is an inequality that holds eventually, up to a constant. It captures asymptotic behaviour, and we can test it with limits. And because it ignores exactly the machine-dependent details, it's the standard language of algorithm efficiency.</p>
+    <p>That's why we can say merge sort beats bubble sort on any computer, for large enough inputs. Thank you, we're happy to take questions.</p>
+  </aside>
+</section>
+
+<!-- 14 REFERENCES -->
+<section class="slide" id="references" data-t="0" aria-label="References">
+  <h2>References</h2>
+  <ol class="refs">
+    <li>Wikipedia, “Big O notation”. <a href="https://en.wikipedia.org/wiki/Big_O_notation">en.wikipedia.org/wiki/Big_O_notation</a></li>
+    <li>Wikipedia, “Time complexity”. <a href="https://en.wikipedia.org/wiki/Time_complexity">en.wikipedia.org/wiki/Time_complexity</a></li>
+    <li>Wikipedia, “Sorting algorithm”. <a href="https://en.wikipedia.org/wiki/Sorting_algorithm">en.wikipedia.org/wiki/Sorting_algorithm</a></li>
+    <li>K. H. Rosen, <i>Discrete Mathematics and Its Applications</i>, 8th ed., McGraw-Hill, 2019. Section 3.2, “The Growth of Functions”.</li>
+    <li>T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein, <i>Introduction to Algorithms</i>, 4th ed., MIT Press, 2022. Chapter 3 and Section 8.1.</li>
+    <li>D. E. Knuth, “Big Omicron and big Omega and big Theta”, <i>ACM SIGACT News</i> 8(2), 1976.</li>
+  </ol>
+  <p class="small">Slides after this one are backup material for questions.</p>
+  <aside class="notes"><p>Only show this if asked. The next slides are backups for questions: the O, Ω, Θ family; the n log n lower-bound proof; fine print; and when constants matter.</p></aside>
+</section>
+
+<!-- B1 -->
+<section class="slide" id="b-family" data-t="0" data-backup aria-label="Backup: the family of notations">
+  <p class="backup-tag">Backup for questions</p>
+  <h2>The family: <i>O</i>, Ω, Θ and little <i>o</i></h2>
+  <div class="body">
+    <table class="stack">
+      <thead><tr><th>Notation</th><th>Definition (for some <i class="m">C</i> &gt; 0, <i class="m">n</i><sub>0</sub>, all <i class="m">n</i> ≥ <i class="m">n</i><sub>0</sub>)</th><th>Think of it as</th><th>Limit test</th></tr></thead>
+      <tbody>
+        <tr><td class="m-cell"><i>f</i> = <i>O</i>(<i>g</i>)</td><td class="m-cell"><i>f</i>(<i>n</i>) ≤ <i>C</i>·<i>g</i>(<i>n</i>)</td><td>≤ (upper bound)</td><td class="m-cell"><i>L</i> &lt; ∞</td></tr>
+        <tr><td class="m-cell"><i>f</i> = Ω(<i>g</i>)</td><td class="m-cell"><i>f</i>(<i>n</i>) ≥ <i>C</i>·<i>g</i>(<i>n</i>)</td><td>≥ (lower bound)</td><td class="m-cell"><i>L</i> &gt; 0</td></tr>
+        <tr><td class="m-cell"><i>f</i> = Θ(<i>g</i>)</td><td class="m-cell">both of the above</td><td>= (tight bound)</td><td class="m-cell">0 &lt; <i>L</i> &lt; ∞</td></tr>
+        <tr><td class="m-cell"><i>f</i> = <i>o</i>(<i>g</i>)</td><td class="m-cell">for every <i>ε</i> &gt; 0: <i>f</i>(<i>n</i>) ≤ <i>ε</i>·<i>g</i>(<i>n</i>) eventually</td><td>&lt; (strictly slower)</td><td class="m-cell"><i>L</i> = 0</td></tr>
+      </tbody>
+    </table>
+    <p>Example: insertion sort's running time is <i class="m">O</i>(<i class="m">n</i>²) and Ω(<i class="m">n</i>). Its worst case is Θ(<i class="m">n</i>²) and its best case is Θ(<i class="m">n</i>). Θ(<i class="m">g</i>) holds exactly when <i class="m">f</i> = <i class="m">O</i>(<i class="m">g</i>) and <i class="m">g</i> = <i class="m">O</i>(<i class="m">f</i>).</p>
+  </div>
+  <aside class="notes"><p>Use if asked about Omega or Theta. O is like ≤, Omega like ≥, Theta like =, little o like strict <. The limit column assumes the limit exists.</p></aside>
+</section>
+
+<!-- B2 -->
+<section class="slide" id="b-lower-bound" data-t="0" data-backup aria-label="Backup: lower bound proof">
+  <p class="backup-tag">Backup for questions</p>
+  <h2>Why no comparison sort beats <i>n</i> log <i>n</i></h2>
+  <div class="body two">
+    <div class="fig tall"><svg id="fig-dtree" role="img" aria-label="Decision tree for sorting three elements a, b, c with six leaves"></svg></div>
+    <div class="proof" style="font-size:var(--fs-body)">
+      <div>Any comparison sort is a binary decision tree: each comparison has two outcomes.</div>
+      <div>It must reach a different leaf for each of the <i>n</i>! orders, so it has ≥ <i>n</i>! leaves.</div>
+      <div>A binary tree of height <i>h</i> has at most 2<sup><i>h</i></sup> leaves: 2<sup><i>h</i></sup> ≥ <i>n</i>! ⇒ <i>h</i> ≥ log<sub>2</sub>(<i>n</i>!).</div>
+      <div>The largest <i>n</i>/2 factors of <i>n</i>! are each ≥ <i>n</i>/2, so <i>n</i>! ≥ (<i>n</i>/2)<sup><i>n</i>/2</sup>.</div>
+      <div>log<sub>2</sub>(<i>n</i>!) ≥ (<i>n</i>/2)·log<sub>2</sub>(<i>n</i>/2) = Ω(<i>n</i> log <i>n</i>). <span class="qed">∎</span></div>
+      <div class="small" style="font-family:inherit">The height <i class="m">h</i> is the worst-case number of comparisons. Counting sort and radix sort escape the bound because they don't compare elements.</div>
+    </div>
+  </div>
+  <aside class="notes"><p>Use if asked why n log n is the limit. For 3 elements there are 3! = 6 orders, so at least 6 leaves, so height at least log₂6 ≈ 2.6, so 3 comparisons in the worst case.</p></aside>
+</section>
+
+<!-- B3 -->
+<section class="slide" id="b-fine-print" data-t="0" data-backup aria-label="Backup: fine print">
+  <p class="backup-tag">Backup for questions</p>
+  <h2>Fine print worth knowing</h2>
+  <div class="body two">
+    <div class="col">
+      <div class="box"><h3>The “=” only works one way</h3><p><i class="m">n</i> = <i class="m">O</i>(<i class="m">n</i>²), but writing <i class="m">O</i>(<i class="m">n</i>²) = <i class="m">n</i> is nonsense. Read it as <i class="m">f</i> ∈ <i class="m">O</i>(<i class="m">g</i>): <i class="m">O</i>(<i class="m">g</i>) is a set of functions.</p></div>
+      <div class="box"><h3>The limit test is sufficient, not necessary</h3><p><i class="m">f</i>(<i class="m">n</i>) = <i class="m">n</i>(2 + sin <i class="m">n</i>) ≤ 3<i class="m">n</i>, so <i class="m">f</i> = <i class="m">O</i>(<i class="m">n</i>). But <i class="m">f</i>/<i class="m">n</i> = 2 + sin <i class="m">n</i> keeps oscillating and has no limit. The definition still works; use lim sup when the limit doesn't exist.</p></div>
+    </div>
+    <div class="col">
+      <div class="box"><h3>Log base doesn't matter</h3><p class="m" style="font-size:var(--fs-math)">log<sub><i>a</i></sub><i>n</i> = <span class="frac"><span>log<sub><i>b</i></sub><i>n</i></span><span>log<sub><i>b</i></sub><i>a</i></span></span></p><p>Changing base multiplies by a constant, so <i class="m">O</i>(log<sub>2</sub><i class="m">n</i>) = <i class="m">O</i>(log<sub>10</sub><i class="m">n</i>).</p></div>
+      <div class="box"><h3>Big O is not “worst case”</h3><p>Best, average and worst case are three different functions of <i class="m">n</i>. <i class="m">O</i>, Ω and Θ are bounds you can put on any of them.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Use for tricky questions about notation, missing limits, logarithm bases, or "is Big O the worst case?".</p></aside>
+</section>
+
+<!-- B4 -->
+<section class="slide" id="b-constants" data-t="0" data-backup aria-label="Backup: when constants matter">
+  <p class="backup-tag">Backup for questions</p>
+  <h2>When the hidden constants do matter</h2>
+  <div class="body two">
+    <div class="col">
+      <p>Big O compares growth, not speed at a particular <i class="m">n</i>. For small inputs a quadratic algorithm with tiny constants can win.</p>
+      <p>That's why real libraries are <b>hybrids</b>: Timsort (Python, Java) and introsort (C++ <code>std::sort</code>) hand small pieces to insertion sort.</p>
+      <p>Quicksort's <i class="m">n</i>² worst case is avoided with random pivots (expected <i class="m">n</i> log <i class="m">n</i>), and introsort switches to heapsort if recursion gets too deep.</p>
+    </div>
+    <div class="col">
+      <div class="box"><h3>A short history</h3>
+        <p><b>1894</b> Paul Bachmann introduces <i class="m">O</i>, for <i>Ordnung</i> (order).</p>
+        <p><b>1909</b> Edmund Landau adds little <i class="m">o</i>.</p>
+        <p><b>1976</b> Donald Knuth popularises <i class="m">O</i>, Ω and Θ in computer science.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Use if asked "so constants never matter?". Answer: they matter for small n and in practice; Big O tells you what happens as n grows.</p></aside>
+</section>
+</main>
+
+<div id="progress" aria-hidden="true"></div>
+<nav id="nav" aria-label="Slide controls">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <span id="count" aria-live="polite"></span>
+  <button id="next" aria-label="Next slide">→</button>
+  <button id="notes-btn" aria-label="Show speaker notes" aria-pressed="false">N</button>
+  <button id="fs-btn" aria-label="Full screen">⤢</button>
+</nav>
+<aside id="notes" hidden aria-label="Speaker notes"></aside>
+
+<span id="probe" style="position:absolute;width:0;height:0;overflow:hidden"></span>
+<script>
+{
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const deck = $('#deck'), slides = $$('.slide');
+const mainCount = slides.filter(s => !s.hasAttribute('data-backup')).length;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let cur = 0;
+
+/* ---------- formatting helpers ---------- */
+const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+const sup = s => String(s).split('').map(c => SUP[c] ?? c).join('');
+const group = n => Math.round(n).toLocaleString('en-US');
+function sci(log10v) { // number given as log10, rendered as a × 10^k
+  const k = Math.floor(log10v), m = 10 ** (log10v - k);
+  const mm = m.toFixed(1);
+  return (mm === '1.0' ? '' : mm + ' × ') + '10<sup>' + group(k) + '</sup>';
+}
+function fmtCount(log10v) { return log10v < 7 ? group(10 ** log10v) : sci(log10v); }
+const LOG_YEAR_S = Math.log10(365.25 * 86400);
+const LOG_UNIVERSE_NS = Math.log10(13.8e9) + LOG_YEAR_S + 9; // ≈ 26.64
+function fmtTime(log10ns) {
+  if (log10ns < 3) return String(parseFloat((10 ** log10ns).toPrecision(3))) + ' ns';
+  if (log10ns < 6) return round3(10 ** (log10ns - 3)) + ' µs';
+  if (log10ns < 9) return round3(10 ** (log10ns - 6)) + ' ms';
+  const s = 10 ** (log10ns - 9);
+  if (s < 60) return round3(s) + ' s';
+  if (s < 3600) return round3(s / 60) + ' min';
+  if (s < 86400) return round3(s / 3600) + ' hours';
+  if (s < 86400 * 365.25) return round3(s / 86400) + ' days';
+  const ly = log10ns - 9 - LOG_YEAR_S;
+  return (ly < 6 ? group(10 ** ly) : sci(ly)) + ' years';
+}
+function round3(v) { return v >= 100 ? group(v) : String(parseFloat(v.toFixed(v >= 10 ? 1 : 2))); }
+const lgFact = n => n < 2 ? 0 : n < 171 ? Math.log10([...Array(n)].reduce((a, _, i) => a * (i + 1), 1)) :
+  (n * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI * n) + 1 / (12 * n)) / Math.LN10;
+
+/* ---------- SVG plotting helpers ---------- */
+const observers = [];
+function mount(svg, draw) {
+  const f = () => { const W = svg.clientWidth, H = svg.clientHeight; if (W < 20 || H < 20) return; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = draw(W, H); };
+  const ro = new ResizeObserver(f); ro.observe(svg); observers.push(ro); return f;
+}
+function niceTicks(max, count) {
+  const raw = max / count, p = 10 ** Math.floor(Math.log10(raw)), m = raw / p;
+  const step = (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p, out = [];
+  for (let v = 0; v <= max * 1.0001; v += step) out.push(+v.toPrecision(12));
+  return out;
+}
+const tickLbl = v => v >= 1e6 ? (v / 1e6) + 'M' : v >= 1e4 ? (v / 1e3) + 'k' : String(+v.toPrecision(6));
+function frame(W, H, xmax, ymax, opt = {}) {
+  const fs = Math.max(12, Math.min(17, W / 42));
+  const m = { l: opt.l ?? fs * 3.6, r: opt.r ?? fs * 4.2, t: opt.t ?? fs * 1.6, b: opt.b ?? fs * 2.8 };
+  const x0 = opt.xmin ?? 0, y0 = opt.ymin ?? 0;
+  const sx = x => m.l + (x - x0) / (xmax - x0) * (W - m.l - m.r);
+  const sy = y => H - m.b - (y - y0) / (ymax - y0) * (H - m.t - m.b);
+  const small = W < 520;
+  let g = '';
+  const xt = opt.xticks || niceTicks(xmax - x0, small ? 3 : 5).map(v => v + x0).filter(v => v <= xmax);
+  const yt = opt.yticks || niceTicks(ymax - y0, small ? 3 : 4).map(v => v + y0).filter(v => v <= ymax);
+  for (const v of yt) g += `<line class="gl" x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${m.l - 8}" y="${sy(v) + fs * .35}" text-anchor="end" font-size="${fs * .85}" class="f-muted">${(opt.yfmt || tickLbl)(v)}</text>`;
+  for (const v of xt) g += `<text x="${sx(v)}" y="${H - m.b + fs * 1.3}" text-anchor="middle" font-size="${fs * .85}" class="f-muted">${tickLbl(v)}</text>`;
+  g += `<path class="axis" d="M${m.l},${m.t} V${H - m.b} H${W - m.r}"/>`;
+  g += `<text x="${W - m.r}" y="${H - m.b + fs * 2.5}" text-anchor="end" font-size="${fs}" class="serif">n</text>`;
+  const clip = `c${Math.random().toString(36).slice(2, 8)}`;
+  g += `<clipPath id="${clip}"><rect x="${m.l}" y="${m.t - 2}" width="${W - m.l - m.r + 2}" height="${H - m.t - m.b + 2}"/></clipPath>`;
+  return { sx, sy, m, fs, g, clip, small };
+}
+function pathOf(fn, a, b, sx, sy, steps = 260) {
+  let d = '';
+  for (let i = 0; i <= steps; i++) { const x = a + (b - a) * i / steps, y = fn(x); if (!isFinite(y)) continue; d += (d ? 'L' : 'M') + sx(x).toFixed(1) + ',' + sy(y).toFixed(1); }
+  return d;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- segmented control helper ---------- */
+function seg(el, items, initial, onPick) {
+  el.innerHTML = items.map(([v, label]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${v === initial}">${label}</button>`).join('');
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    for (const x of el.children) x.setAttribute('aria-pressed', x === b);
+    onPick(b.dataset.v);
+  });
+  onPick(initial);
+}
+
+/* ---------- 1 title figure ---------- */
+let titleDrawn = false;
+mount($('#fig-title'), (W, H) => {
+  const F = frame(W, H, 20, 100, { xmin: 1, xticks: [1, 5, 10, 15, 20], r: Math.max(64, W * .14), t: Math.max(30, H * .08) });
+  const curves = [
+    ['log n', x => Math.log2(x), 's-graph', 'f-graph'],
+    ['n', x => x, 's-graph', 'f-graph'],
+    ['n log n', x => x * Math.log2(x), 's-blue', 'f-blue'],
+    ['n²', x => x * x, 's-red', 'f-red'],
+    ['2ⁿ', x => 2 ** x, 's-graph', 'f-graph'],
+  ];
+  const anim = titleDrawn || reduce ? '' : 'anim';
+  let s = F.g + `<g clip-path="url(#${F.clip})">`;
+  curves.forEach(([, fn, cls], i) => s += `<path class="ln ${cls} ${anim}" pathLength="1" style="animation-delay:${i * .18}s" d="${pathOf(fn, 1, 20, F.sx, F.sy)}"/>`);
+  s += '</g>';
+  curves.forEach(([lbl, fn, , fcls], i) => {
+    let x = 20, y = fn(20), anchor = 'start', dx = 8, dy = 5;
+    if (y > 100) { let lo = 1, hi = 20; for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; fn(mid) > 100 ? hi = mid : lo = mid; } x = lo; y = 100; anchor = 'middle'; dx = 0; dy = -10; }
+    s += `<text class="serif ${fcls} ${anim}" style="animation-delay:${1.2 + i * .15}s" x="${F.sx(x) + dx}" y="${F.sy(y) + dy}" text-anchor="${anchor}" font-size="${F.fs * 1.35}" font-weight="600">${lbl}</text>`;
+  });
+  titleDrawn = true;
+  return s;
+});
+
+/* ---------- 2 hook table ---------- */
+const hookRows = [
+  ['log n', 'Binary search', n => Math.log10(Math.log2(n)), ''],
+  ['n', 'Scan a list once', n => Math.log10(n), ''],
+  ['n log n', 'Merge sort, heapsort', n => Math.log10(n * Math.log2(n)), 'is-blue'],
+  ['n²', 'Bubble sort, insertion sort', n => 2 * Math.log10(n), 'is-red'],
+  ['n³', 'Naive matrix multiplication', n => 3 * Math.log10(n), ''],
+  ['2ⁿ', 'Try every subset', n => n * Math.log10(2), ''],
+  ['n!', 'Try every ordering', n => lgFact(n), ''],
+];
+seg($('#hook-n'), [['10', '10'], ['100', '100'], ['1000', '1,000'], ['1000000', '1 million'], ['1000000000', '1 billion']], '1000000', v => {
+  const n = +v;
+  $('#hook-table tbody').innerHTML = hookRows.map(([name, ex, lg, cls]) => {
+    const L = lg(n), pct = Math.max(0, Math.min(100, L / LOG_UNIVERSE_NS * 100)), full = L >= LOG_UNIVERSE_NS;
+    const time = full ? 'longer than the universe has existed' : fmtTime(L);
+    return `<tr class="${cls}"><td class="m-cell">${name.replace(/n/g, '<i>n</i>')}</td><td>${ex}</td><td class="num">${fmtCount(L)}</td><td class="num" style="white-space:normal">${time}</td><td><div class="bar${full ? ' full' : ''}" style="width:${full ? 100 : Math.max(1, pct)}%"></div></td></tr>`;
+  }).join('');
+});
+
+/* ---------- 3 race 100n vs n² ---------- */
+const zoom = $('#zoom');
+const zoomX = () => Math.round(20 * 100 ** (zoom.value / 100));
+const drawRace = mount($('#fig-race'), (W, H) => {
+  const X = zoomX(), ymax = Math.max(100 * X, X * X) * 1.08;
+  const F = frame(W, H, X, ymax, { l: Math.max(48, W * .1) });
+  let s = F.g + `<g clip-path="url(#${F.clip})">`;
+  s += `<path class="ln s-blue" d="${pathOf(x => 100 * x, 0, X, F.sx, F.sy)}"/><path class="ln s-red" d="${pathOf(x => x * x, 0, X, F.sx, F.sy)}"/></g>`;
+  let yb = F.sy(100 * X), yr = F.sy(X * X);
+  if (Math.abs(yb - yr) < F.fs * 1.4) { const mid = (yb + yr) / 2; if (100 * X >= X * X) { yb = mid - F.fs * .75; yr = mid + F.fs * .75; } else { yr = mid - F.fs * .75; yb = mid + F.fs * .75; } }
+  s += `<text x="${F.sx(X) + 8}" y="${yb + 5}" font-size="${F.fs * 1.25}" class="serif f-blue" font-weight="600">100n</text>`;
+  s += `<text x="${F.sx(X) + 8}" y="${yr + 5}" font-size="${F.fs * 1.25}" class="serif f-red" font-weight="600">n²</text>`;
+  if (X >= 100) {
+    const cx = F.sx(100), cy = F.sy(10000);
+    s += `<circle cx="${cx}" cy="${cy}" r="6" fill="var(--hl-solid)" stroke="var(--ink)" stroke-width="1.5"/>`;
+    s += `<text x="${cx + 10}" y="${cy - 10}" font-size="${F.fs}">equal at n = 100</text>`;
+  }
+  return s;
+});
+function raceText() {
+  const X = zoomX(), a = 100 * X, b = X * X;
+  $('#zoom-out').textContent = group(X);
+  const r = a > b ? a / b : b / a;
+  $('#race-read').innerHTML = a === b ? `At <i class="m">n</i> = 100 both equal 10,000.` :
+    `At <i class="m">n</i> = ${group(X)}: <span class="t-blue">100<i class="m">n</i> = ${group(a)}</span>, <span class="t-red"><i class="m">n</i>² = ${group(b)}</span>. ` +
+    (a > b ? `<span class="t-blue">100<i class="m">n</i></span> is ${round3(r)}× bigger.` : `<span class="t-red"><i class="m">n</i>²</span> is ${round3(r)}× bigger.`);
+}
+zoom.addEventListener('input', () => { drawRace(); raceText(); }); raceText();
+
+/* ---------- 5 witnesses explorer ---------- */
+const cC = $('#cC'), cN = $('#cN');
+const fW = x => 3 * x * x + 5 * x + 2;
+const crossAt = C => C > 3 ? (5 + Math.sqrt(25 + 8 * (C - 3))) / (2 * (C - 3)) : Infinity;
+const drawWit = mount($('#fig-wit'), (W, H) => {
+  const C = +cC.value, n0 = +cN.value, XM = 10, YM = 400, ns = crossAt(C);
+  const F = frame(W, H, XM, YM, { yticks: [0, 100, 200, 300, 400] });
+  let s = `<rect class="hlr" x="${F.sx(n0)}" y="${F.m.t}" width="${F.sx(XM) - F.sx(n0)}" height="${F.sy(0) - F.m.t}"/>` + F.g + `<g clip-path="url(#${F.clip})">`;
+  const bEnd = Math.min(XM, ns);
+  if (bEnd > n0) { // shade where the inequality fails inside the highlighted region
+    let d = ''; const steps = 80;
+    for (let i = 0; i <= steps; i++) { const x = n0 + (bEnd - n0) * i / steps; d += (i ? 'L' : 'M') + F.sx(x) + ',' + F.sy(fW(x)); }
+    for (let i = steps; i >= 0; i--) { const x = n0 + (bEnd - n0) * i / steps; d += 'L' + F.sx(x) + ',' + F.sy(C * x * x); }
+    s += `<path class="bad" d="${d}Z"/>`;
+  }
+  s += `<path class="ln s-blue" d="${pathOf(x => C * x * x, 0, XM, F.sx, F.sy)}"/><path class="ln s-red" d="${pathOf(fW, 0, XM, F.sx, F.sy)}"/></g>`;
+  s += `<line x1="${F.sx(n0)}" x2="${F.sx(n0)}" y1="${F.m.t}" y2="${F.sy(0)}" stroke="var(--hl-ink)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  s += `<text x="${F.sx(n0) + 6}" y="${F.m.t + F.fs * 1.1}" font-size="${F.fs * 1.1}" class="serif">n₀</text>`;
+  if (ns <= XM) s += `<circle cx="${F.sx(ns)}" cy="${F.sy(fW(ns))}" r="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="2"/>`;
+  const xr = Math.min(XM, Math.sqrt(YM / C) * .97);
+  s += `<text x="${F.sx(xr) - 6}" y="${F.sy(C * xr * xr) + 4}" text-anchor="end" font-size="${F.fs * 1.15}" class="serif f-blue" font-weight="600">${C}n²</text>`;
+  s += `<text x="${F.sx(XM) + 8}" y="${F.sy(fW(XM)) + 5}" font-size="${F.fs * 1.15}" class="serif f-red" font-weight="600">f(n)</text>`;
+  return s;
+});
+function witText() {
+  const C = +cC.value, n0 = +cN.value, ns = crossAt(C), v = $('#wit-verdict');
+  $('#cC-out').textContent = C; $('#cN-out').textContent = n0;
+  let ok = false, msg;
+  if (C <= 3) msg = `No <i class="m">n</i><sub>0</sub> works with <i class="m">C</i> = ${C}: <i class="m">f</i>(<i class="m">n</i>) is always above ${C}<i class="m">n</i>².`;
+  else if (n0 >= ns) { ok = true; msg = `<b>Valid witnesses.</b> 3<i class="m">n</i>² + 5<i class="m">n</i> + 2 ≤ ${C}<i class="m">n</i>² for every <i class="m">n</i> ≥ ${n0}.`; }
+  else msg = `<b>Fails at <i class="m">n</i> = ${n0}</b> (red area). With <i class="m">C</i> = ${C}, start at <i class="m">n</i><sub>0</sub> = ${Math.ceil(ns - 1e-9)} or later.`;
+  v.classList.toggle('no', !ok); v.lastElementChild.innerHTML = msg;
+}
+for (const el of [cC, cN]) el.addEventListener('input', () => { drawWit(); witText(); });
+witText();
+
+/* ---------- 7 limit test ---------- */
+const pairs = {
+  poly: { lbl: '(3n²+5n+2)/n²', r: x => 3 + 5 / x + 2 / (x * x), L: 3, ymax: 11, text: 'Ratio → 3, finite and not 0. So 3<i class="m">n</i>² + 5<i class="m">n</i> + 2 = Θ(<i class="m">n</i>²): same growth as <i class="m">n</i>².' },
+  log: { lbl: '(ln n)/n', r: x => Math.log(x) / x, L: 0, ymax: .45, text: 'L’Hôpital: (1/<i class="m">n</i>)/1 → 0. So ln <i class="m">n</i> = <i class="m">O</i>(<i class="m">n</i>), and in fact it grows strictly slower.' },
+  sq: { lbl: 'n²/n', r: x => x, L: Infinity, ymax: 42, text: 'Ratio = <i class="m">n</i> → ∞. So <i class="m">n</i>² is not <i class="m">O</i>(<i class="m">n</i>), exactly what we proved on the previous slide.' },
+  exp: { lbl: 'n³/2ⁿ', r: x => x ** 3 / 2 ** x, L: 0, ymax: 4.5, text: 'L’Hôpital three times: 6/(2<sup><i class="m">n</i></sup>(ln 2)³) → 0. Any polynomial is <i class="m">O</i>(2<sup><i class="m">n</i></sup>).' },
+};
+let pairKey = 'poly';
+const drawLim = mount($('#fig-lim'), (W, H) => {
+  const p = pairs[pairKey];
+  const F = frame(W, H, 40, p.ymax, { xmin: 1, xticks: [1, 10, 20, 30, 40], r: Math.max(56, W * .12) });
+  let s = F.g;
+  if (isFinite(p.L)) s += `<line x1="${F.m.l}" x2="${W - F.m.r}" y1="${F.sy(p.L)}" y2="${F.sy(p.L)}" class="s-blue" stroke-width="2" stroke-dasharray="7 6"/>`;
+  s += `<g clip-path="url(#${F.clip})"><path class="ln s-red" d="${pathOf(p.r, 1, 40, F.sx, F.sy)}"/></g>`;
+  const yEnd = isFinite(p.L) ? F.sy(p.L) : F.sy(Math.min(p.ymax, p.r(40)));
+  s += `<text x="${W - F.m.r + 8}" y="${yEnd + 5}" font-size="${F.fs * 1.25}" class="serif ${isFinite(p.L) ? 'f-blue' : 'f-red'}" font-weight="600">→ ${isFinite(p.L) ? p.L : '∞'}</text>`;
+  s += `<text x="${F.m.l + 10}" y="${F.m.t + F.fs}" font-size="${F.fs * 1.1}" class="serif">${esc(p.lbl)}</text>`;
+  return s;
+});
+seg($('#lim-pick'), Object.entries(pairs).map(([k, p]) => [k, `<span class="m">${esc(p.lbl)}</span>`]), 'poly', k => { pairKey = k; drawLim(); $('#lim-text').innerHTML = pairs[k].text; });
+
+/* ---------- 8 leading-term share ---------- */
+$('#share-rows').innerHTML = [1, 10, 100, 1000, 1e6].map(n => {
+  const share = 3 * n * n / (3 * n * n + 5 * n + 2) * 100;
+  const txt = share > 99.99 ? share.toFixed(4) : share > 99 ? share.toFixed(2) : share.toFixed(1);
+  return `<div class="row"><span class="lbl"><i>n</i> = ${n === 1e6 ? '10⁶' : group(n)}</span><div class="track"><div class="red" style="width:${share}%"></div></div><span class="val">${txt}%</span></div>`;
+}).join('');
+
+/* ---------- 9 faster computer ---------- */
+function nlognMult(k, N = 1e6) {
+  const target = k * N * Math.log2(N); let lo = N, hi = k * N;
+  for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; mid * Math.log2(mid) < target ? lo = mid : hi = mid; }
+  return lo / N;
+}
+seg($('#speed-pick'), [['10', '10× faster'], ['100', '100× faster'], ['1000', '1000× faster']], '100', v => {
+  const k = +v, lk = Math.log(k);
+  const rows = [
+    ['n', k, `${group(k)}× bigger`, 'blue'],
+    ['n log n', nlognMult(k), `${round3(nlognMult(k))}× bigger*`, 'blue'],
+    ['n²', Math.sqrt(k), `${round3(Math.sqrt(k))}× bigger`, 'red'],
+    ['n³', Math.cbrt(k), `${round3(Math.cbrt(k))}× bigger`, 'red'],
+    ['2ⁿ', null, `only +${Math.log2(k).toFixed(1)} items`, 'red'],
+  ];
+  $('#speed-rows').innerHTML = rows.map(([lbl, mult, txt, c]) => {
+    const w = mult ? Math.log(mult) / lk * 100 : 1.2;
+    return `<div class="row"><span class="lbl">${lbl.replace(/n/g, '<i>n</i>')}</span><div class="track"><div class="${c}" style="width:${w}%"></div></div><span class="val">${txt}</span></div>`;
+  }).join('') + `<p class="small">* starting from <i class="m">n</i> = 1 million</p>`;
+});
+
+/* ---------- 10 static diagrams ---------- */
+mount($('#fig-stairs'), (W, H) => {
+  const n = 8, cell = Math.min((H - 10) / n, (W * .55) / n), x0 = 4, y0 = 4;
+  let s = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const on = c > r;
+    s += `<rect x="${x0 + c * cell}" y="${y0 + r * cell}" width="${cell - 2}" height="${cell - 2}" rx="2" ${on ? 'class="f-red" fill-opacity=".85"' : 'fill="none" stroke="var(--grid2)"'}/>`;
+  }
+  const tx = x0 + n * cell + 18, fs = Math.max(10, Math.min(19, cell * .7, (W - tx - 4) / 13.5));
+  s += `<text x="${tx}" y="${y0 + cell * 2.2}" font-size="${fs * 1.4}" class="f-red" font-weight="700">28 of 64</text>`;
+  s += `<text x="${tx}" y="${y0 + cell * 2.2 + fs * 1.5}" font-size="${fs}" class="f-muted">n(n−1)/2 = 8·7/2 = 28</text>`;
+  s += `<text x="${tx}" y="${y0 + cell * 2.2 + fs * 3}" font-size="${fs}" class="f-muted">about half of n², still n²</text>`;
+  return s;
+});
+mount($('#fig-tree'), (W, H) => {
+  const levels = 4, gapY = (H - 8) / levels, fs = Math.max(12, Math.min(18, gapY * .38)), bw = Math.max(W * .5, W - fs * 9);
+  let s = '';
+  for (let l = 0; l < levels; l++) {
+    const k = 2 ** l, w = bw / k, y = 4 + l * gapY;
+    for (let i = 0; i < k; i++) {
+      s += `<rect x="${i * w + 2}" y="${y}" width="${w - 4}" height="${gapY * .62}" rx="4" fill="var(--paper)" stroke="${l === levels - 1 ? 'var(--graphite)' : 'var(--blue)'}" stroke-width="1.5"/>`;
+      s += `<text x="${i * w + w / 2}" y="${y + gapY * .31 + fs * .35}" text-anchor="middle" font-size="${fs}" class="serif">${8 / k}</text>`;
+    }
+    const label = l === levels - 1 ? 'size 1' : '≤ 8 comparisons';
+    s += `<text x="${bw + 12}" y="${y + gapY * .31 + fs * .35}" font-size="${fs * .9}" class="${l === levels - 1 ? 'f-muted' : 'f-blue'}">${label}</text>`;
+  }
+  return s;
+});
+
+/* ---------- B2 decision tree ---------- */
+mount($('#fig-dtree'), (W, H) => {
+  const fs = Math.max(12, Math.min(18, W / 34));
+  const nodes = [ // [x, y, label, isLeaf]
+    [.5, .08, 'a ≤ b ?'], [.25, .36, 'b ≤ c ?'], [.75, .36, 'a ≤ c ?'],
+    [.1, .66, 'a b c', 1], [.38, .66, 'a ≤ c ?'], [.62, .66, 'b a c', 1], [.88, .66, 'b ≤ c ?'],
+    [.28, .93, 'a c b', 1], [.48, .93, 'c a b', 1], [.78, .93, 'b c a', 1], [.97, .93, 'c b a', 1],
+  ];
+  const edges = [[0, 1, 'yes'], [0, 2, 'no'], [1, 3, 'yes'], [1, 4, 'no'], [2, 5, 'yes'], [2, 6, 'no'], [4, 7, 'yes'], [4, 8, 'no'], [6, 9, 'yes'], [6, 10, 'no']];
+  const px = x => 14 + x * (W - 60), py = y => y * (H - 10) + 4;
+  let s = '';
+  for (const [a, b, t] of edges) { const A = nodes[a], B = nodes[b]; s += `<line x1="${px(A[0])}" y1="${py(A[1]) + fs * .6}" x2="${px(B[0])}" y2="${py(B[1]) - fs * .9}" class="s-graph" stroke-width="1.5"/><text x="${(px(A[0]) + px(B[0])) / 2 + (t === 'yes' ? -8 : 8)}" y="${(py(A[1]) + py(B[1])) / 2}" text-anchor="${t === 'yes' ? 'end' : 'start'}" font-size="${fs * .75}" class="f-muted">${t}</text>`; }
+  for (const [x, y, lbl, leaf] of nodes) {
+    const w = lbl.length * fs * .52 + 16;
+    s += `<rect x="${px(x) - w / 2}" y="${py(y) - fs * .9}" width="${w}" height="${fs * 1.6}" rx="${leaf ? 3 : fs * .8}" fill="${leaf ? 'var(--hl)' : 'var(--paper)'}" stroke="${leaf ? 'var(--hl-ink)' : 'var(--blue)'}" stroke-width="1.5"/>`;
+    s += `<text x="${px(x)}" y="${py(y) + fs * .35}" text-anchor="middle" font-size="${fs}" class="serif">${lbl}</text>`;
+  }
+  return s;
+});
+
+/* ---------- 11 sorting race ---------- */
+function* bubble(a) { const n = a.length; for (let i = 0; i < n - 1; i++) { let sw = false; for (let j = 0; j < n - 1 - i; j++) { yield ['c', j, j + 1]; if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; sw = true; } } if (!sw) return; } }
+function* insertion(a) { for (let i = 1; i < a.length; i++) { let j = i; while (j > 0) { yield ['c', j - 1, j]; if (a[j - 1] > a[j]) { [a[j - 1], a[j]] = [a[j], a[j - 1]]; j--; } else break; } } }
+function* mergeSort(a, lo = 0, hi = a.length) {
+  if (hi - lo < 2) return; const mid = (lo + hi) >> 1;
+  yield* mergeSort(a, lo, mid); yield* mergeSort(a, mid, hi);
+  const L = a.slice(lo, mid), R = a.slice(mid, hi); let i = 0, j = 0, k = lo;
+  while (i < L.length && j < R.length) { yield ['c', k, mid + j]; a[k++] = L[i] <= R[j] ? L[i++] : R[j++]; }
+  while (i < L.length) a[k++] = L[i++]; while (j < R.length) a[k++] = R[j++];
+}
+function* quick(a, lo = 0, hi = a.length - 1) {
+  if (lo >= hi) return; const p = a[hi]; let i = lo;
+  for (let j = lo; j < hi; j++) { yield ['c', j, hi]; if (a[j] < p) { [a[i], a[j]] = [a[j], a[i]]; i++; } }
+  [a[i], a[hi]] = [a[hi], a[i]];
+  yield* quick(a, lo, i - 1); yield* quick(a, i + 1, hi);
+}
+const algos = [['Bubble sort', bubble, 'quadratic'], ['Insertion sort', insertion, 'quadratic'], ['Merge sort', mergeSort, 'n log n'], ['Quicksort (last element as pivot)', quick, 'n log n on average']];
+const countCmp = (g, arr) => { let c = 0; for (const _ of g(arr.slice())) c++; return c; };
+$('#lanes').innerHTML = algos.map(([name], i) => `<div class="lane"><header><span>${name}</span><output id="lane-out-${i}">0 comparisons</output></header><div class="fig"><canvas id="lane-${i}"></canvas></div></div>`).join('');
+const probe = $('#probe');
+const col = v => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
+let raceN = 128, raceKind = 'random', lanes = [], raf = 0, base = [];
+function makeInput() {
+  const a = Array.from({ length: raceN }, (_, i) => i + 1);
+  if (raceKind === 'random') for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (raceKind === 'reversed') a.reverse();
+  return a;
+}
+function drawLane(L) {
+  const cv = L.cv, dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const n = L.arr.length, bw = W / n, cG = col('--graphite'), cR = col('--red'), cB = col('--blue');
+  for (let k = 0; k < n; k++) {
+    ctx.fillStyle = L.done ? cB : (L.hi.includes(k) ? cR : cG);
+    const h = L.arr[k] / n * (H - 4);
+    ctx.fillRect(k * bw + (bw > 3 ? .5 : 0), H - h, Math.max(1, bw - (bw > 3 ? 1 : 0)), h);
+  }
+}
+function resetRace() {
+  cancelAnimationFrame(raf); raf = 0; base = makeInput();
+  lanes = algos.map(([name, g], i) => ({ name, g, i, arr: base.slice(), cmp: 0, done: false, hi: [], cv: $('#lane-' + i), out: $('#lane-out-' + i), total: countCmp(g, base) }));
+  for (const L of lanes) { L.out.textContent = '0 comparisons'; drawLane(L); }
+  const nl = Math.round(raceN * Math.log2(raceN));
+  $('#race-theory').innerHTML = `For <i class="m">n</i> = ${raceN}: <i class="m">n</i>²/2 = ${group(raceN * raceN / 2)}, <i class="m">n</i> log<sub>2</sub><i class="m">n</i> = ${group(nl)}`;
+  $('#race-go').textContent = 'Start race';
+}
+function startRace() {
+  if (raf || lanes.some(L => L.cmp > 0)) resetRace();
+  const max = Math.max(...lanes.map(L => L.total)), budget = Math.max(1, Math.ceil(max / (7 * 60)));
+  let finished = 0;
+  for (const L of lanes) L.it = L.g(L.arr);
+  $('#race-go').textContent = 'Restart';
+  const tick = () => {
+    for (const L of lanes) {
+      if (L.done) continue;
+      let used = 0;
+      while (used < budget) { const r = L.it.next(); if (r.done) { L.done = true; L.hi = []; L.place = ++finished; break; } L.cmp++; used++; L.hi = [r.value[1], r.value[2]]; }
+      L.out.textContent = `${group(L.cmp)} comparisons${L.done ? ', done' : ''}`;
+      drawLane(L);
+    }
+    raf = lanes.every(L => L.done) ? 0 : requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+}
+seg($('#race-n'), [['32', '32 items'], ['64', '64'], ['128', '128']], '128', v => { raceN = +v; resetRace(); });
+seg($('#race-input'), [['random', 'Random'], ['sorted', 'Sorted'], ['reversed', 'Reversed']], 'random', v => { raceKind = v; resetRace(); });
+$('#race-go').addEventListener('click', startRace);
+const laneRO = new ResizeObserver(() => lanes.forEach(drawLane)); laneRO.observe($('#lanes')); observers.push(laneRO);
+
+/* ---------- deck navigation, notes, timer ---------- */
+const nav = { count: $('#count'), prog: $('#progress'), notes: $('#notes'), nbtn: $('#notes-btn') };
+const targets = slides.map(s => +s.dataset.t || 0);
+const cumul = targets.map((_, i) => targets.slice(0, i + 1).reduce((a, b) => a + b, 0));
+let t0 = null, timerId = 0;
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function renderNotes() {
+  if (nav.notes.hidden) return;
+  const s = slides[cur], el = s.querySelector('.notes'), elapsed = t0 ? (performance.now() - t0) / 1000 : 0;
+  const late = t0 && targets[cur] && elapsed > cumul[cur] + 15;
+  nav.notes.innerHTML = `<div class="meta"><span>Slide <b>${cur + 1}</b>: ${esc(s.getAttribute('aria-label'))}</span>` +
+    (targets[cur] ? `<span>Budget <b>${targets[cur]} s</b></span><span>Finish this slide by <b>${mmss(cumul[cur])}</b></span>` : '') +
+    `<span class="${late ? 'late' : ''}">Elapsed <b>${mmss(elapsed)}</b>${t0 ? '' : ' (starts when you leave slide 1, T resets)'}</span></div>` + (el ? el.innerHTML : '');
+}
+function setCur(i) {
+  cur = i;
+  const backup = slides[i].hasAttribute('data-backup');
+  nav.count.textContent = backup ? `Backup ${i - mainCount + 1}` : `${i + 1} / ${mainCount}`;
+  nav.prog.style.width = Math.min(100, (i + 1) / mainCount * 100) + '%';
+  if (i > 0 && !t0) { t0 = performance.now(); timerId = setInterval(renderNotes, 1000); }
+  try { history.replaceState(null, '', '#' + slides[i].id); } catch (e) { }
+  renderNotes();
+}
+function go(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  deck.scrollTo({ left: slides[i].offsetLeft, behavior: reduce || Math.abs(i - cur) > 1 ? 'auto' : 'smooth' });
+  setCur(i);
+}
+let scrollT = 0;
+deck.addEventListener('scroll', () => { clearTimeout(scrollT); scrollT = setTimeout(() => { const i = Math.round(deck.scrollLeft / deck.clientWidth); if (i !== cur) setCur(i); }, 90); }, { passive: true });
+function toggleNotes() { nav.notes.hidden = !nav.notes.hidden; nav.nbtn.setAttribute('aria-pressed', !nav.notes.hidden); renderNotes(); }
+function toggleFS() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => { }); } catch (e) { } }
+$('#prev').addEventListener('click', () => go(cur - 1));
+$('#next').addEventListener('click', () => go(cur + 1));
+nav.nbtn.addEventListener('click', toggleNotes);
+$('#fs-btn').addEventListener('click', toggleFS);
+addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const k = e.key, onBtn = e.target.closest && e.target.closest('button');
+  if (k === 'ArrowRight' || k === 'PageDown' || (k === ' ' && !onBtn)) { e.preventDefault(); go(cur + 1); }
+  else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); go(cur - 1); }
+  else if (k === 'Home') { e.preventDefault(); go(0); }
+  else if (k === 'End') { e.preventDefault(); go(mainCount - 2); }
+  else if (k === 'f' || k === 'F') toggleFS();
+  else if (k === 'n' || k === 'N') toggleNotes();
+  else if (k === 't' || k === 'T') { t0 = performance.now(); clearInterval(timerId); timerId = setInterval(renderNotes, 1000); renderNotes(); }
+  else if (k === 'd' || k === 'D') { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; lanes.forEach(drawLane); }
+});
+addEventListener('resize', () => { deck.scrollTo({ left: slides[cur].offsetLeft, behavior: 'auto' }); });
+new MutationObserver(() => lanes.forEach(drawLane)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+const startIdx = slides.findIndex(s => '#' + s.id === location.hash);
+if (startIdx > 0) requestAnimationFrame(() => { deck.scrollTo({ left: slides[startIdx].offsetLeft }); setCur(startIdx); }); else setCur(0);
+}
+</script>
+</body>
+</html>
